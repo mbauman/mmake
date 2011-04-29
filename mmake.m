@@ -34,6 +34,9 @@ function mmake(varargin)
 %       - %.dlm is automatically built with rtwbuild('%')
 %   - KNOWN BUGS/DEFICIENCIES
 %       - Needs MMakefile parsing error handling
+%       - MMakefile parsing does not generally respect quoting or escaping;
+%           only a limited subset of filename parsing respects quotes/escapes.
+%           As such, files, variables and rules cannot contain : or = chars.
 %
 %   When called without any arguments, MMAKE searches the current working
 %   directory for a file named 'MMakefile' and builds the first target
