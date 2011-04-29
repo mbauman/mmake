@@ -1,0 +1,22 @@
+all: clean out.${MEX_EXT} validate
+
+%.o:%.c %.h common.h
+
+*.o:
+	!touch ${@}
+
+out.${MEX_EXT}: src.o src2.o
+	!touch ${@}
+
+clean:
+    !rm *.o
+
+validate:
+    assertFileIsNewer('out.${MEX_EXT}','src.o')
+    assertFileIsNewer('out.${MEX_EXT}','src2.o')
+    assertFileIsNewer('out.${MEX_EXT}','src.c')
+    assertFileIsNewer('out.${MEX_EXT}','src2.c')
+    assertFileIsNewer('out.${MEX_EXT}','src.h')
+    assertFileIsNewer('out.${MEX_EXT}','src2.h')
+    assertFileIsNewer('out.${MEX_EXT}','common.h')
+

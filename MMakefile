@@ -1,0 +1,5 @@
+test: setup
+	mmake('','test/BasicDepTracking/MMakefile')
+
+setup:
+    addpath(fullfile(pwd,'test'))
