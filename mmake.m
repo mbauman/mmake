@@ -198,10 +198,12 @@ function result = make(target, state)
 
             % Ensure the dependent exists and check its timestamp
             file = dir(deps{i});
-            if (isempty(file))
-                error('mmake: File %s not found as required by %s', deps{i}, target);
+            if (isempty(file)) % TODO: || isphony(file)
+                % error('mmake: File %s not found as required by %s', deps{i}, target);
+                newest_dependent_timestamp = inf;
+            else
+                newest_dependent_timestamp = max(newest_dependent_timestamp, file.datenum);
             end
-            newest_dependent_timestamp = max(newest_dependent_timestamp, file.datenum);
         end
     end
     
@@ -258,8 +260,8 @@ function state = read_mmakefile(path)
         rule = regexp(line, '^\s*(\S.*):(?!=)(.*)$', 'tokens', 'once');
         if (length(rule) >= 1)
             loc = length(state.rules)+1;
-            state.rules(loc).target = strread(expand_vars(rule{1}, state.vars), '%s'); %#ok<REMFF1> strread permits an empty argument,
-            state.rules(loc).deps   = strread(expand_vars(rule{2}, state.vars), '%s'); %#ok<REMFF1> textscan (the replacement) does not.
+            state.rules(loc).target = parseShellString(expand_vars(rule{1}, state.vars));
+            state.rules(loc).deps   = parseShellString(expand_vars(rule{2}, state.vars));
             
             % And check the next line for a rule
             line = fgetl(fid);
