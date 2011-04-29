@@ -47,12 +47,12 @@ function mmake(varargin)
 
 %% Argument parsing and setup
 wd = '';
+target = '';
 if (nargin == 0)
     state = read_mmakefile('MMakefile');
     if (isempty(state))
         error('mmake: *** No targets specified and no mmakefile found.  Stop.')
     end
-    target = state.rules(1).target{1};
 elseif (nargin == 1)
     target = varargin{1};
     state = read_mmakefile('MMakefile');
@@ -68,6 +68,10 @@ elseif (nargin == 2)
 else
     error 'mmake: Wrong number of input arguments';
 end
+
+if isempty(target)
+    target = state.rules(1).target{1};
+end;
 
 %% Implicit rules... TODO: do this better.
 idx = 1;
