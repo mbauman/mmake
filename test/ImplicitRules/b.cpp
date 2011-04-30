@@ -1,3 +1,4 @@
+#include "b.h"
 #include <iostream>
 
 void helloplus(int num) {

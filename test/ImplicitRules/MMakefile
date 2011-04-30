@@ -1,4 +1,6 @@
 all: main.${MEX_EXT} mainplus.${MEX_EXT} linked.${MEX_EXT}
 
-linked.${MEX_EXT}: linked.o a.o b.o
+%.o: %.h
+
+linked.${MEX_EXT}: linked.cpp a.o b.o
     mex $^ -output $@
