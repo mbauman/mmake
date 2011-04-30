@@ -1,0 +1,71 @@
+function mmake(varargin)
+%MMAKE A minimal subset of GNU make, implemented in MATLAB for MATLAB.
+%   GNU Make "is a tool which controls the generation of executables and 
+%   other non-source files of a program from the program's source files.
+%   Make gets its knowledge of how to build your program from a file called
+%   the makefile, which lists each of the non-source files and how to 
+%   compute it from other files." For details see: www.gnu.org/software/make
+%
+%   Only a minimal subset of GNU Make features are implemented. Notably:
+%   - Makefile parsing (looks for MMakefile by default)
+%       - Immediate assignments (var := value)
+%       - Variable expansion via ${var} or $(var)
+%       - The basic make 'rule' syntax (target : dependencies, followed by
+%         tabbed MATLAB commands)
+%       - Wildcards in targets (*.x : common.h)
+%       - Pattern rules (%.x : %.y)
+%       - Auto variables in rule commands:
+%           - $@ = the target
+%           - $< = first dependency
+%           - $^ = all dependencies (with duplicates removed)
+%           - $+ = all dependencies (in the exact order they are listed)
+%           - $* = the pattern matched by '%' in a pattern rule
+%           - $& = the directory of the target
+%       - MATLAB command expansion via $(eval cmd) or ${eval cmd}. The
+%           string 'cmd' is evaluated directly within MATLAB. It must return a
+%           value of type char or a cell array of chars. In the event that a
+%           multidimensional array or cell array is returned, all elements are
+%           concatenated together with a space in between.
+%       - As a convenience, the variable ${MEX_EXT} defaults to the result
+%           of ${eval mexext}.
+%   - Implicit rules
+%       - %.${MEX_EXT} is automatically built with 'mex' from %.c or %.cpp
+%       - %.o/%.obj is automatically built with 'mex' from %.c or %.cpp
+%       - %.dlm is automatically built with rtwbuild('%')
+%   - KNOWN BUGS/DEFICIENCIES
+%       - Needs MMakefile parsing error handling
+%       - MMakefile parsing does not generally respect quoting or escaping;
+%           only a limited subset of filename parsing respects quotes/escapes.
+%           As such, files, variables and rules cannot contain : or = chars.
+%
+%   When called without any arguments, MMAKE searches the current working
+%   directory for a file named 'MMakefile' and builds the first target
+%   listed. With one argument, it builds that target from any rules listed
+%   in 'MMakefile' (if it exists in the current working directory) or the
+%   implicit rules. The optional second argument may be used to specify a
+%   MMakefile in another directory or saved as a different name.
+%
+%   Copyright (c) 2011, Matt Bauman. mbauman@gmail.com.
+%   All rights reserved.
+
+%   Redistribution and use in source and binary forms, with or without
+%   modification, are permitted provided that the following conditions are
+%   met:
+%
+%   - Redistributions of source code must retain the above copyright notice,
+%     this list of conditions and the following disclaimer.
+%   - Redistributions in binary form must reproduce the above copyright
+%     notice, this list of conditions and the following disclaimer in the
+%     documentation and/or other materials provided with the distribution.
+%
+%   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+%   IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+%   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+%   PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+%   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+%   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+%   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+%   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+%   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+%   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
