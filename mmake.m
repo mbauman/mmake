@@ -1,4 +1,4 @@
-function mmake(varargin)
+function mmake(target,mmakefilename)
 %MMAKE A minimal subset of GNU make, implemented in MATLAB for MATLAB.
 %   GNU Make "is a tool which controls the generation of executables and 
 %   other non-source files of a program from the program's source files.
@@ -71,29 +71,33 @@ function mmake(varargin)
 %   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %% Argument parsing and setup
-wd = '';
-target = '';
-if (nargin == 0)
-    state = read_mmakefile('MMakefile');
-    if (isempty(state))
-        error('mmake: *** No targets specified and no mmakefile found.  Stop.')
+if nargin < 1, target = ''; end;
+if nargin < 2
+    % No mmakefile specified, try to find MMakefile or MMakefile.m
+    if exist(fullfile(pwd,'MMakefile'),'file')
+        mmakefilename = fullfile(pwd,'MMakefile');
+    elseif exist(fullfile(pwd,'MMakefile.m'),'file')
+        mmakefilename = fullfile(pwd,'MMakefile.m');
+    elseif isempty(target)
+        % no target AND no makefile - not psychic!
+        error('MJB:mmake:notarget','*** No targets specified and no mmakefile found.  Stop.');
+    else
+        mmakefilename = '';
     end
-elseif (nargin == 1)
-    target = varargin{1};
-    state = read_mmakefile('MMakefile');
-elseif (nargin == 2)
-    target = varargin{1};
-    state = read_mmakefile(varargin{2});
-    if (isempty(state))
-        error(['mmake: MMakefile (', varargin{2},') not found']);
-    end
-    [mmakefile_dir,~,~] = fileparts(varargin{2});
-    fprintf('Entering directory %s\n', mmakefile_dir);
-    wd = cd(mmakefile_dir);
-else
-    error 'mmake: Wrong number of input arguments';
 end
+if nargin < 3
+    % Validate mmakefilename
+    if ~isAbsolutePath(mmakefilename) && ~isempty(mmakefilename)
+        mmakefilename = fullfile(pwd,mmakefilename);
+    end
+    if ~exist(mmakefilename,'file')
+        error('MJB:mmake:nommakefile','MMakefile (%s) not found', mmakefilename)
+    end
+end
+if nargin >=3, error('MJB:mmake:Arguments',' *** Too many arguments'); end;
 
+%% Read the makefile
+state = read_mmakefile(mmakefilename);
 if isempty(target)
     target = state.rules(1).target{1};
 end;
@@ -129,19 +133,33 @@ state.implicitrules(idx).deps     = {'%.mdl'};
 state.implicitrules(idx).commands = {'rtwbuild(''$*'')'};
 
 %% Make the target
-result = make(target, state);
+% Move to the correct directory
+mmakefileDir = fileparts(mmakefilename);
+if ~strcmp(pwd,mmakefileDir)
+    fprintf('Entering diectory %s\n', mmakefileDir);
+    wd = cd(mmakefileDir);
+else
+    wd = '';
+end
+try
+    result = make(target, state);
+    switch (result)
+        case -1
+            error('mmake: No rule found for target %s\n', target);
+        case 0
+            fprintf('Nothing to be done for target %s\n', target);
+        case 1
+            fprintf('Target %s successfully built\n', target);
+    end
+catch EX
+    if ~isempty(wd), cd(wd); end
+    rethrow(EX);
+end
 if (~isempty(wd))
     fprintf('Leaving directory %s\n',pwd);
     cd(wd);
 end
-switch (result)
-    case -1
-        error('mmake: No rule found for target %s\n', target);
-    case 0
-        fprintf('Nothing to be done for target %s\n', target);
-    case 1
-        fprintf('Target %s successfully built\n', target);
-end
+
 end %function
 
 %% Private functions %%
