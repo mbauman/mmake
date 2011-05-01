@@ -1,6 +1,7 @@
 test: setup
 	mmake('','test/BasicDepTracking/MMakefile')
     mmake('','test/ImplicitRules/MMakefile')
+    mmake('','test/FunctionForm/MMakefile.m')
 
 setup:
     addpath(fullfile(pwd,'test'))

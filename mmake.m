@@ -74,9 +74,10 @@ function mmake(target,mmakefilename)
 if nargin < 1, target = ''; end;
 if nargin < 2
     % No mmakefile specified, try to find MMakefile or MMakefile.m
-    if exist(fullfile(pwd,'MMakefile'),'file')
+    % (exist does not distinguish between the two)
+    if ~isempty(dir('MMakefile'))
         mmakefilename = fullfile(pwd,'MMakefile');
-    elseif exist(fullfile(pwd,'MMakefile.m'),'file')
+    elseif ~isempty(dir('MMakefile.m'))
         mmakefilename = fullfile(pwd,'MMakefile.m');
     elseif isempty(target)
         % no target AND no makefile - not psychic!
@@ -96,13 +97,6 @@ if nargin < 3
 end
 if nargin >=3, error('MJB:mmake:Arguments','*** Too many arguments'); end;
 
-%% Read the makefile
-state = read_mmakefile(mmakefilename);
-if isempty(target)
-    target = state.rules(1).target{1};
-end;
-[state.implicitRules,state.vars] = implicit_mmakefile();
-
 %% Make the target
 % Move to the correct directory
 mmakefile_dir = fileparts(mmakefilename);
@@ -113,6 +107,13 @@ else
     wd = '';
 end
 % try
+    % Read the makefile
+    [state.implicitRules, state.vars] = implicit_mmakefile();
+    state = read_mmakefile(state,mmakefilename);
+    
+    if isempty(target)
+        target = state.rules(1).target{1};
+    end
     result = make(target, state);
     switch result
         case -1
@@ -273,8 +274,41 @@ function result = make(target, state)
     end
 end
 
-% Parse the MMakefile.
-function state = read_mmakefile(path)
+function state = read_mmakefile(state,path)
+    if regexp(path,'\.m$')
+        state = read_functional_mmakefile(state,path);
+    else
+        state = read_gnu_mmakefile(state,path);
+    end
+end
+
+% Parse a MATLAB-function style MMakefile.
+function state = read_functional_mmakefile(state,path)
+    % We have an m-file function
+    [~,fcn] = fileparts(path);
+    assert(strcmp(path,which(fcn)),'Function that is called (%s) and filename (%s) do not match',which(fcn),path);
+
+    try
+        [state.rules, state.vars] = feval(fcn);
+    catch EX
+        error(['MJB:mmake:' EX.identifier],'Error reading MMakefile (%s):%s',path,EX.message);
+    end
+    
+    % Ensure the targets, deps, and commands exist and are in cells.
+    for i = 1:length(state.rules)
+        for field = {'target' 'deps' 'commands'}
+            f = field{1};
+            if ~isfield(state.rules(i),f) || isempty(state.rules(i).(f))
+                state.rules(i).(f) = {};
+            elseif ischar(state.rules(i).(f))
+                state.rules(i).(f) = {state.rules(i).(f)}; 
+            end;
+        end
+    end
+end
+
+% Parse a GNU-style MMakefile.
+function state = read_gnu_mmakefile(state,path)
     fid = fopen(path);
     
     if fid == -1
@@ -283,7 +317,6 @@ function state = read_mmakefile(path)
     end
     
     % Parse all the variables
-    state.vars.MEX_EXT = mexext;
     line = fgetl(fid);
     while ischar(line)
         line = strip_comments(line);
@@ -507,4 +540,3 @@ function out = find_matching_rules(target, ruleset)
         end
     end
 end
-

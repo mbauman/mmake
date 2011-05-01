@@ -1,0 +1,1 @@
+void helloplus(int num);
