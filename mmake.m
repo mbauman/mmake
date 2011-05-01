@@ -101,36 +101,7 @@ state = read_mmakefile(mmakefilename);
 if isempty(target)
     target = state.rules(1).target{1};
 end;
-
-%% Implicit rules... TODO: do this better.
-idx = 1;
-state.implicitRules(idx).target   = {['%.' mexext]};
-state.implicitRules(idx).deps     = {'%.c'};
-state.implicitRules(idx).commands = {'mex ${CFLAGS} $< -output $@'};
-idx = idx+1;
-state.implicitRules(idx).target   = {['%.' mexext]};
-state.implicitRules(idx).deps     = {'%.cpp'};
-state.implicitRules(idx).commands = {'mex ${CPPFLAGS} ${CFLAGS} $< -output $@'};
-idx = idx+1;
-state.implicitRules(idx).target   = {'%.o'};
-state.implicitRules(idx).deps     = {'%.c'};
-state.implicitRules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
-idx = idx+1;
-state.implicitRules(idx).target   = {'%.o'};
-state.implicitRules(idx).deps     = {'%.cpp'};
-state.implicitRules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
-idx = idx+1;
-state.implicitRules(idx).target   = {'%.obj'};
-state.implicitRules(idx).deps     = {'%.c'};
-state.implicitRules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
-idx = idx+1;
-state.implicitRules(idx).target   = {'%.obj'};
-state.implicitRules(idx).deps     = {'%.cpp'};
-state.implicitRules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
-idx = idx+1;
-state.implicitRules(idx).target   = {'%.dlm'};
-state.implicitRules(idx).deps     = {'%.mdl'};
-state.implicitRules(idx).commands = {'rtwbuild(''$*'')'};
+[state.implicitRules,state.vars] = implicit_mmakefile();
 
 %% Make the target
 % Move to the correct directory
@@ -141,7 +112,7 @@ if ~strcmp(pwd,mmakefile_dir)
 else
     wd = '';
 end
-try
+% try
     result = make(target, state);
     switch result
         case -1
@@ -151,10 +122,10 @@ try
         case 1
             fprintf('Target %s successfully built\n', target);
     end
-catch EX
-    if ~isempty(wd), cd(wd); end
-    rethrow(EX);
-end
+% catch EX
+%     if ~isempty(wd), cd(wd); end
+%     rethrow(EX);
+% end
 if ~isempty(wd)
     fprintf('Leaving directory %s\n',pwd);
     cd(wd);
@@ -163,6 +134,39 @@ end
 end %function
 
 %% Private functions %%
+
+function [rules, vars] = implicit_mmakefile()
+    vars.MEX_EXT = mexext;
+    
+    idx = 1;
+    rules(idx).target   = {['%.' mexext]};
+    rules(idx).deps     = {'%.c'};
+    rules(idx).commands = {'mex ${CFLAGS} $< -output $@'};
+    idx = idx+1;
+    rules(idx).target   = {['%.' mexext]};
+    rules(idx).deps     = {'%.cpp'};
+    rules(idx).commands = {'mex ${CPPFLAGS} ${CFLAGS} $< -output $@'};
+    idx = idx+1;
+    rules(idx).target   = {'%.o'};
+    rules(idx).deps     = {'%.c'};
+    rules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
+    idx = idx+1;
+    rules(idx).target   = {'%.o'};
+    rules(idx).deps     = {'%.cpp'};
+    rules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
+    idx = idx+1;
+    rules(idx).target   = {'%.obj'};
+    rules(idx).deps     = {'%.c'};
+    rules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
+    idx = idx+1;
+    rules(idx).target   = {'%.obj'};
+    rules(idx).deps     = {'%.cpp'};
+    rules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
+    idx = idx+1;
+    rules(idx).target   = {'%.dlm'};
+    rules(idx).deps     = {'%.mdl'};
+    rules(idx).commands = {'rtwbuild(''$*'')'};
+end
 
 % Recursively make the target, using the dependency information available
 % in the state varaible.  Only runs the available commands if a dependant
