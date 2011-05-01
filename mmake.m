@@ -220,7 +220,6 @@ function result = make(target, state)
         end
     end
     
-    % TODO: This should be better (elsewhere?)
     if isempty(cmds) && isempty(deps)
         % We don't know how to make it; ensure it exists:
         file = dir(target);
@@ -280,6 +279,18 @@ function state = read_mmakefile(state,path)
     else
         state = read_gnu_mmakefile(state,path);
     end
+    
+    % Expand variables in the target and deps (postpone expanding the
+    % commands as I support embedding the auto variables within a normal
+    % variable; we won't know those until the rule is executed)
+    for i = 1:length(state.rules)
+        for field = {'target' 'deps'}
+            f = field{1};
+            if isfield(state.rules(i),f) && ~isempty(state.rules(i).(f))
+                state.rules(i).(f) = expand_vars(state.rules(i).(f), state.vars);
+            end;
+        end
+    end
 end
 
 % Parse a MATLAB-function style MMakefile.
@@ -307,7 +318,9 @@ function state = read_functional_mmakefile(state,path)
     end
 end
 
-% Parse a GNU-style MMakefile.
+% Parse a GNU-style MMakefile. \
+% TODO: This should really be implemented with a state-based parser instead
+% of these regexp grabs.
 function state = read_gnu_mmakefile(state,path)
     fid = fopen(path);
     
@@ -340,8 +353,8 @@ function state = read_gnu_mmakefile(state,path)
         rule = regexp(line, '^\s*(\S.*):(?!=)(.*)$', 'tokens', 'once');
         if length(rule) >= 1
             loc = length(state.rules)+1;
-            state.rules(loc).target = parseShellString(expand_vars(rule{1}, state.vars));
-            state.rules(loc).deps   = parseShellString(expand_vars(rule{2}, state.vars));
+            state.rules(loc).target = parseShellString(rule{1});
+            state.rules(loc).deps   = parseShellString(rule{2});
             
             % And check the next line for a rule
             line = fgetl(fid);
@@ -378,7 +391,11 @@ function out = expand_vars(value, vars)
     end
 
     if iscell(value)
-        value = value{1};
+        out = cell(size(value));
+        for i=1:length(value)
+            out{i} = expand_vars(value{i},vars);
+        end
+        return;
     end
     
     loc = 1;
