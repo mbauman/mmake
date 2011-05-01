@@ -88,7 +88,7 @@ if nargin < 2
 end
 if nargin < 3
     % Validate mmakefilename
-    if ~isAbsolutePath(mmakefilename) && ~isempty(mmakefilename)
+    if ~is_absolute_path(mmakefilename) && ~isempty(mmakefilename)
         mmakefilename = fullfile(pwd,mmakefilename);
     end
     if ~exist(mmakefilename,'file')
@@ -539,4 +539,23 @@ function out = find_matching_rules(target, ruleset)
             out(loc).commands = expand_auto_vars(ruleset(i).commands, out(loc));
         end
     end
+end
+
+% Check if the path is absolute
+function out = is_absolute_path(path)
+
+path = strtrim(path);
+if isempty(path)
+    out = false;
+    return
+end
+
+if ispc
+    % path begins with disk identifier X:\
+    key = ['^\w',regexptranslate('escape',[':',filesep])];
+    out = regexp(path,key);
+else
+   % path begins with / or ~ (home directory)
+   out = (path(1) == filesep | path(1) == '~');
+end
 end
