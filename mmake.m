@@ -94,7 +94,7 @@ if nargin < 3
         error('MJB:mmake:nommakefile','MMakefile (%s) not found', mmakefilename)
     end
 end
-if nargin >=3, error('MJB:mmake:Arguments',' *** Too many arguments'); end;
+if nargin >=3, error('MJB:mmake:Arguments','*** Too many arguments'); end;
 
 %% Read the makefile
 state = read_mmakefile(mmakefilename);
@@ -104,46 +104,46 @@ end;
 
 %% Implicit rules... TODO: do this better.
 idx = 1;
-state.implicitrules(idx).target   = {['%.' mexext]};
-state.implicitrules(idx).deps     = {'%.c'};
-state.implicitrules(idx).commands = {'mex ${CFLAGS} $< -output $@'};
+state.implicitRules(idx).target   = {['%.' mexext]};
+state.implicitRules(idx).deps     = {'%.c'};
+state.implicitRules(idx).commands = {'mex ${CFLAGS} $< -output $@'};
 idx = idx+1;
-state.implicitrules(idx).target   = {['%.' mexext]};
-state.implicitrules(idx).deps     = {'%.cpp'};
-state.implicitrules(idx).commands = {'mex ${CPPFLAGS} ${CFLAGS} $< -output $@'};
+state.implicitRules(idx).target   = {['%.' mexext]};
+state.implicitRules(idx).deps     = {'%.cpp'};
+state.implicitRules(idx).commands = {'mex ${CPPFLAGS} ${CFLAGS} $< -output $@'};
 idx = idx+1;
-state.implicitrules(idx).target   = {'%.o'};
-state.implicitrules(idx).deps     = {'%.c'};
-state.implicitrules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
+state.implicitRules(idx).target   = {'%.o'};
+state.implicitRules(idx).deps     = {'%.c'};
+state.implicitRules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
 idx = idx+1;
-state.implicitrules(idx).target   = {'%.o'};
-state.implicitrules(idx).deps     = {'%.cpp'};
-state.implicitrules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
+state.implicitRules(idx).target   = {'%.o'};
+state.implicitRules(idx).deps     = {'%.cpp'};
+state.implicitRules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
 idx = idx+1;
-state.implicitrules(idx).target   = {'%.obj'};
-state.implicitrules(idx).deps     = {'%.c'};
-state.implicitrules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
+state.implicitRules(idx).target   = {'%.obj'};
+state.implicitRules(idx).deps     = {'%.c'};
+state.implicitRules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
 idx = idx+1;
-state.implicitrules(idx).target   = {'%.obj'};
-state.implicitrules(idx).deps     = {'%.cpp'};
-state.implicitrules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
+state.implicitRules(idx).target   = {'%.obj'};
+state.implicitRules(idx).deps     = {'%.cpp'};
+state.implicitRules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
 idx = idx+1;
-state.implicitrules(idx).target   = {'%.dlm'};
-state.implicitrules(idx).deps     = {'%.mdl'};
-state.implicitrules(idx).commands = {'rtwbuild(''$*'')'};
+state.implicitRules(idx).target   = {'%.dlm'};
+state.implicitRules(idx).deps     = {'%.mdl'};
+state.implicitRules(idx).commands = {'rtwbuild(''$*'')'};
 
 %% Make the target
 % Move to the correct directory
-mmakefileDir = fileparts(mmakefilename);
-if ~strcmp(pwd,mmakefileDir)
-    fprintf('Entering diectory %s\n', mmakefileDir);
-    wd = cd(mmakefileDir);
+mmakefile_dir = fileparts(mmakefilename);
+if ~strcmp(pwd,mmakefile_dir)
+    fprintf('Entering diectory %s\n', mmakefile_dir);
+    wd = cd(mmakefile_dir);
 else
     wd = '';
 end
 try
     result = make(target, state);
-    switch (result)
+    switch result
         case -1
             error('mmake: No rule found for target %s\n', target);
         case 0
@@ -155,7 +155,7 @@ catch EX
     if ~isempty(wd), cd(wd); end
     rethrow(EX);
 end
-if (~isempty(wd))
+if ~isempty(wd)
     fprintf('Leaving directory %s\n',pwd);
     cd(wd);
 end
@@ -178,8 +178,8 @@ function result = make(target, state)
     deps = {};
     
     for i=1:length(target_rules)
-        if (~isempty(target_rules(i).commands))
-            if (~isempty(cmds))
+        if ~isempty(target_rules(i).commands)
+            if ~isempty(cmds)
                 warning('mmake:multiple_commands',['mmake: Overriding commands for target ',target]);
             end
             cmds = target_rules(i).commands;
@@ -188,16 +188,16 @@ function result = make(target, state)
         deps = {deps{:}, target_rules(i).deps{:}};
     end
     
-    if (isempty(cmds))
+    if isempty(cmds)
         % We didn't find any explicit commands to make this target; try
         % the implicit rules
-        matching_implicit_rules = find_matching_rules(target, state.implicitrules);
+        matching_implicit_rules = find_matching_rules(target, state.implicitRules);
         for i=1:length(matching_implicit_rules)
             deps_exist = false;
             for j = 1:length(matching_implicit_rules(i).deps)
-                if(~isempty(matching_implicit_rules(i).deps{j}))
+                if ~isempty(matching_implicit_rules(i).deps{j})
                     result = make(matching_implicit_rules(i).deps{j},state);
-                    if (result == -1)
+                    if result == -1
                         % The dependency didn't exist and we don't know how
                         % to make it
                         deps_exist = false;
@@ -207,7 +207,7 @@ function result = make(target, state)
                     end
                 end
             end
-            if (deps_exist)
+            if deps_exist
                 deps = {deps{:}, matching_implicit_rules(i).deps{:}};
                 cmds = matching_implicit_rules(i).commands;
                 break;
@@ -216,10 +216,10 @@ function result = make(target, state)
     end
     
     % TODO: This should be better (elsewhere?)
-    if (isempty(cmds) && isempty(deps))
+    if isempty(cmds) && isempty(deps)
         % We don't know how to make it; ensure it exists:
         file = dir(target);
-        if (isempty(file))
+        if isempty(file)
             result = -1;
         else
             result = 0;
@@ -228,20 +228,20 @@ function result = make(target, state)
     end
     
     
-    if (isempty(deps))
+    if isempty(deps)
         newest_dependent_timestamp = inf;
     else
         newest_dependent_timestamp = 0;
         for i=1:length(deps)
             % Recursively make all the dependents
             status = make(deps{i}, state);
-            if (status == -1)
+            if status == -1
                 error('mmake: No rule to build %s as required by %s', deps{i}, target);
             end
 
             % Ensure the dependent exists and check its timestamp
             file = dir(deps{i});
-            if (isempty(file)) % TODO: || isphony(file)
+            if isempty(file) % TODO: || isphony(file)
                 % error('mmake: File %s not found as required by %s', deps{i}, target);
                 newest_dependent_timestamp = inf;
             else
@@ -252,12 +252,12 @@ function result = make(target, state)
     
     target_timestamp = -1;
     file = dir(target);
-    if (~isempty(file))
+    if ~isempty(file)
         target_timestamp = file.datenum;
     end
     
     
-    if (target_timestamp < newest_dependent_timestamp)
+    if target_timestamp < newest_dependent_timestamp
         for i = 1:length(cmds)
             cmd = expand_vars(cmds{i}, state.vars);
             disp(cmd);
@@ -273,7 +273,7 @@ end
 function state = read_mmakefile(path)
     fid = fopen(path);
     
-    if (fid == -1)
+    if fid == -1
         state = [];
         return;
     end
@@ -281,12 +281,12 @@ function state = read_mmakefile(path)
     % Parse all the variables
     state.vars.MEX_EXT = mexext;
     line = fgetl(fid);
-    while (ischar(line))
+    while ischar(line)
         line = strip_comments(line);
         
         % Check for an immediate := assignment
         variable = regexp(line, '^\s*([A-Za-z]\w*)\s*:=(.*)$', 'tokens', 'once');
-        if (length(variable) == 2)
+        if length(variable) == 2
             state.vars.(variable{1}) = expand_vars(variable{2}, state.vars);
         end
         line = fgetl(fid);
@@ -296,12 +296,12 @@ function state = read_mmakefile(path)
     % Parse all rules
     state.rules = [];
     line = fgetl(fid);
-    while (ischar(line))
+    while ischar(line)
         line = strip_comments(line);
         
         % Check for a : that's missing the =
         rule = regexp(line, '^\s*(\S.*):(?!=)(.*)$', 'tokens', 'once');
-        if (length(rule) >= 1)
+        if length(rule) >= 1
             loc = length(state.rules)+1;
             state.rules(loc).target = parseShellString(expand_vars(rule{1}, state.vars));
             state.rules(loc).deps   = parseShellString(expand_vars(rule{2}, state.vars));
@@ -309,7 +309,7 @@ function state = read_mmakefile(path)
             % And check the next line for a rule
             line = fgetl(fid);
             state.rules(loc).commands = {};
-            while (ischar(line) && ~isempty(regexp(line, '^(\t|\s\s\s\s)', 'once')))
+            while ischar(line) && ~isempty(regexp(line, '^(\t|\s\s\s\s)', 'once'))
                 cmdloc = length(state.rules(loc).commands)+1;
                 state.rules(loc).commands{cmdloc} = strtrim(line);
                 line = fgetl(fid);
@@ -325,7 +325,7 @@ end
 
 function out = strip_comments(str)
     loc = strfind(str, '#');
-    if(loc)
+    if loc
         out = str(1:loc(1)-1);
     else
         out = str;
@@ -335,12 +335,12 @@ end
 % Given an arbitrary string, find all locations of variables, and call
 % parse_var to expand their result.
 function out = expand_vars(value, vars)
-    if (isempty(value))
+    if isempty(value)
         out = value;
         return;
     end
 
-    if (iscell(value))
+    if iscell(value)
         value = value{1};
     end
     
@@ -348,14 +348,14 @@ function out = expand_vars(value, vars)
     result = {};
     while loc < length(value)
         next_loc = find(value(loc:end)=='$');
-        if (isempty(next_loc))
+        if isempty(next_loc)
             result{end+1} = value(loc:end); %#ok<*AGROW>
             break;
         end;
         
         next_loc = next_loc(1)+loc-1;
         
-        if (value(next_loc+1) == '(' || value(next_loc+1) == '{')
+        if value(next_loc+1) == '(' || value(next_loc+1) == '{'
             result{end+1} = value(loc:next_loc-1);
             [result{end+1}, len] = parse_var(value(next_loc:end),vars);
             loc = next_loc + len;
@@ -377,28 +377,28 @@ function [result, len] = parse_var(src,vars)
     j = 3;
     result = {};
     while i<=length(src)
-        if (src(i) == '$' && ( src(i+1) == '(' || src(i+1) == '{'))
+        if src(i) == '$' && ( src(i+1) == '(' || src(i+1) == '{' )
             [val,len] = parse_var(src(i:end),vars);
             result{end+1} = [src(j:i-1) val];
             i = i + len;
             j = i; % The start of the next unexpanded text
-            if (i > length(src)); break; end;
+            if i > length(src); break; end;
         end
         
-        if (src(i) == '(')
+        if src(i) == '('
             p = p+1;
-        elseif (src(i) == '{')
+        elseif src(i) == '{'
             b = b+1;
-        elseif (src(i) == ')')
+        elseif src(i) == ')'
             p = p-1;
-            if (p < 0 && src(2) == '(')
+            if p < 0 && src(2) == '('
                 result{end+1} = src(j:i-1);
                 j = i;
                 break;
             end
-        elseif (src(i) == '}')
+        elseif src(i) == '}'
             b = b-1;
-            if (b < 0 && src(2) == '{')
+            if b < 0 && src(2) == '{'
                 result{end+1} = src(j:i-1);
                 j = i;
                 break;
@@ -407,18 +407,18 @@ function [result, len] = parse_var(src,vars)
         
         i = i+1;
     end
-    if (src(2) == '{' && b >= 0)
+    if src(2) == '{' && b >= 0
         error(['mmake: unmatched ''{'' in MMakefile variable ', src]);
-    elseif (src(2) == '(' && p >= 0)
+    elseif src(2) == '(' && p >= 0
         error(['mmake: unmatched ''('' in MMakefile variable ', src]);
     end
     result{end+1} = src(j:i-1);
     result = [result{:}];
     len = i;
     
-    if (isfield(vars,result))
+    if isfield(vars,result)
         result = vars.(result);
-    elseif (strncmp(result,'eval ',5))
+    elseif strncmp(result,'eval ',5)
         result = concat(eval(result(6:end)));
     else
         result = '';
@@ -428,14 +428,14 @@ end
 
 function out = expand_auto_vars(cmds, ruleset)
     all_deps = concat(ruleset.deps);
-    if (isempty(ruleset.deps))
+    if isempty(ruleset.deps)
         first_dep = ruleset.deps;
     else
         first_dep = ruleset.deps{1};
     end
     
     [target_dir,~,~] = fileparts(ruleset.target);
-    if (isempty(target_dir))
+    if isempty(target_dir)
         target_dir = '.';
     end
     
@@ -455,14 +455,14 @@ function out = str_unique(cell_arry)
 end
 
 function out = concat(obj)
-    if (isempty(obj))
+    if isempty(obj)
         out = '';
-    elseif (ischar(obj) && size(obj,1) == 1)
+    elseif ischar(obj) && size(obj,1) == 1
         out = obj;
-    elseif (ischar(obj) && size(obj,1) > 1)
+    elseif ischar(obj) && size(obj,1) > 1
         obj(:,size(obj,2)+1) = ' ';
         out = obj(:)';
-    elseif (iscell(obj) && ~isempty(obj) && ischar(obj{1}))
+    elseif iscell(obj) && ~isempty(obj) && ischar(obj{1})
         out = strcat(obj, {' '});
         out = [out{:}];
     else
@@ -482,11 +482,11 @@ function out = find_matching_rules(target, ruleset)
         regex = strcat('^', regex, '$');
         match_idx = 0;
         pattern = '';
-        if (strfind(regex{1}, '%'))
+        if strfind(regex{1}, '%')
             % Percent matching only supported on single targets.
             regex = strrep(regex{1}, '%', '(\S+)');
             result = regexp(target, regex, 'tokens', 'once');
-            if (~isempty(result))
+            if ~isempty(result)
                 match_idx = 1;
                 pattern = result{1};
             end
@@ -494,7 +494,7 @@ function out = find_matching_rules(target, ruleset)
             result = regexp(target, regex, 'once');
             match_idx = find(~cellfun(@isempty, result),1,'first');
         end
-        if (match_idx > 0)
+        if match_idx > 0
             loc = length(out) + 1;
             out(loc).target = target;
             out(loc).deps = strrep(ruleset(i).deps, '%', pattern);
