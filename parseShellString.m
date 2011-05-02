@@ -22,9 +22,9 @@ if nargin == 0 && evalin('base','exist(''DEBUG_PARSE_SHELL_STRING'',''var'') && 
     t('"trailing whitespace  " x y',{'trailing whitespace  ' 'x' 'y'});
     t('multiple    spaces',{'multiple' 'spaces'});
     res = parseShellString(sprintf(' \t\n'));
-    assert(iscellstr(res) && length(res) == 0);
+    assert(iscellstr(res) && isempty(res));
     res = parseShellString('');
-    assert(iscell(res) && length(res) == 0);
+    assert(iscell(res) && isempty(res));
     res = parseShellString('hello');
     assert(iscell(res));
     t('unfinished escape \',{},'MJB:parseShellString:IncompleteEscape');
