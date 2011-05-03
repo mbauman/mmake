@@ -7,7 +7,7 @@ function mmake(target,mmakefilename)
 %   compute it from other files." For details see: www.gnu.org/software/make
 %
 %   Only a minimal subset of GNU Make features are implemented. Notably:
-%   - Makefile parsing (looks for MMakefile by default)
+%   - GNU-style Makefile syntax (looks for MMakefile)
 %       - Immediate assignments (var := value)
 %       - Variable expansion via ${var} or $(var)
 %       - The basic make 'rule' syntax (target : dependencies, followed by
@@ -26,17 +26,31 @@ function mmake(target,mmakefilename)
 %           value of type char or a cell array of chars. In the event that a
 %           multidimensional array or cell array is returned, all elements are
 %           concatenated together with a space in between.
-%       - As a convenience, the variable ${MEX_EXT} defaults to the result
-%           of ${eval mexext}.
+%       - As a convenience, the following variables are automatically set:
+%           ${MEX_EXT}      -> ${eval mexext}
+%           ${OBJ_EXT}      -> 'obj' on win, 'o' on unix/mac
+%           ${PWD}          -> ${eval pwd}
+%           ${MEXFLAGS}     -> -O (optimizing; use -g for debug builds; -v for verbose)
+%           ${CFLAGS}       -> MEX default
+%           ${CXXFLAGS}     -> MEX default
+%           ${LDFLAGS}      -> MEX default
+%   - MATLAB Function Makefile syntax (Looks for MMakefile.m)
+%       - functions in the form [rules, variable] = MMakefile(), where
+%           rules are structure with 'target', 'deps', and 'commands' fields
+%           variable is dynamic structure, with each variable a field
 %   - Implicit rules
 %       - %.${MEX_EXT} is automatically built with 'mex' from %.c or %.cpp
-%       - %.o/%.obj is automatically built with 'mex' from %.c or %.cpp
+%       - %.${OBJ_EXT} is automatically built with 'mex' from %.c or %.cpp
 %       - %.dlm is automatically built with rtwbuild('%')
+% 
 %   - KNOWN BUGS/DEFICIENCIES
 %       - Needs MMakefile parsing error handling
-%       - MMakefile parsing does not generally respect quoting or escaping;
-%           only a limited subset of filename parsing respects quotes/escapes.
-%           As such, files, variables and rules cannot contain : or = chars.
+%       - GNU-style MMakefile parsing does not generally respect quoting or 
+%           escaping only a limited subset of filename parsing respects
+%           quotes/escapes. As such, files, variables and rules cannot
+%           contain ':' or '=' characters. It does, however, support quoted
+%           and escaped filenames.
+%       - Needs more tests!
 %
 %   When called without any arguments, MMAKE searches the current working
 %   directory for a file named 'MMakefile' and builds the first target
@@ -138,31 +152,73 @@ end %function
 
 function [rules, vars] = implicit_mmakefile()
     vars.MEX_EXT = mexext;
+    if ispc
+        vars.OBJ_EXT = 'obj';
+    else
+        vars.OBJ_EXT = 'o';
+    end
+    vars.PWD = pwd;
+    
+    vars.MEXFLAGS = '-O'; % Mirror MATLAB's default, but be explicit about it
+    
+    if ispc
+        % WHY, MATHWORKS, WHY!?
+        vars.CFLAGSKEY   = 'COMPFLAGS';
+        vars.CXXFLAGSKEY = 'COMPFLAGS';
+        vars.FFLAGSKEY   = 'COMPFLAGS';
+        vars.LDFLAGSKEY  = 'LINKFLAGS';
+    else
+        vars.CFLAGSKEY   = 'CFLAGS';
+        vars.CXXFLAGSKEY = 'CXXFLAGS';
+        vars.FFLAGSKEY   = 'FFLAGS';
+        vars.LDFLAGSKEY  = 'LDFLAGS';
+    end
+    
+    f = mex.getCompilerConfigurations('fortran');
+    if ~isempty(f)
+        vars.FFLAGS  = f(1).Details.CompilerFlags;
+        vars.LDFLAGS = f(1).Details.LinkerFlags; % Will likely be overwritten
+    end
+    c = mex.getCompilerConfigurations('c'); % Returns both C and C++ configs
+    for i=1:length(c)
+        if ~strcmp(lower(c(i).Language),'c'), continue; end;
+        vars.CFLAGS  = c(i).Details.CompilerFlags;
+        vars.LDFLAGS = c(i).Details.LinkerFlags;
+    end
+    cxx = mex.getCompilerConfigurations('c++');
+    if ~isempty(cxx)
+        vars.CXXFLAGS = cxx(1).Details.CompilerFlags;
+        vars.LDFLAGS  = cxx(1).Details.LinkerFlags;
+    end
+    
+    if isunix
+        % Must escape $ signs in unix for the following vars:
+        fields = {'CFLAGS' 'CXXFLAGS' 'FFLAGS' 'LDFLAGS'};
+        for i = 1:length(fields)
+            if ~isfield(vars,fields{i}), continue; end;
+            vars.(fields{i}) = strrep(vars.(fields{i}),'$','\$');
+        end
+    end
+    
+    % If no CFLAGS have been set, use the CXXFLAGS as their default
+    if ~isfield(vars,'CFLAGS'), vars.CFLAGS = vars.CXXFLAGS; end;
     
     idx = 1;
     rules(idx).target   = {['%.' mexext]};
     rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex ${CFLAGS} $< -output $@'};
+    rules(idx).commands = {'mex ${MEXFLAGS} ${CFLAGSKEY}=''${CFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -output $@'};
     idx = idx+1;
     rules(idx).target   = {['%.' mexext]};
     rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex ${CPPFLAGS} ${CFLAGS} $< -output $@'};
+    rules(idx).commands = {'mex ${MEXFLAGS} ${CXXFLAGSKEY}=''${CXXFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -output $@'};
     idx = idx+1;
-    rules(idx).target   = {'%.o'};
+    rules(idx).target   = {['%.' vars.OBJ_EXT]}; % Note: in a normal function-style MMakefile.m, variable expansion is performed on targets and deps
     rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
+    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CFLAGSKEY}=''${CFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -outdir $&'};
     idx = idx+1;
-    rules(idx).target   = {'%.o'};
+    rules(idx).target   = {['%.' vars.OBJ_EXT]};
     rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
-    idx = idx+1;
-    rules(idx).target   = {'%.obj'};
-    rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex -c ${CFLAGS} $< -outdir $&'};
-    idx = idx+1;
-    rules(idx).target   = {'%.obj'};
-    rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex -c ${CPPFLAGS} ${CFLAGS} $< -outdir $&'};
+    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CXXFLAGSKEY}=''${CXXFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -outdir $&'};
     idx = idx+1;
     rules(idx).target   = {'%.dlm'};
     rules(idx).deps     = {'%.mdl'};
