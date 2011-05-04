@@ -1,6 +1,9 @@
 all: main.${MEX_EXT} mainplus.${MEX_EXT} linked.${MEX_EXT}
 
-%.o: %.h
+%.${OBJ_EXT}: %.h
 
-linked.${MEX_EXT}: linked.cpp a.o b.o
-    mex $^ -output $@
+linked.${MEX_EXT}: linked.cpp a.${OBJ_EXT} b.${OBJ_EXT}
+    mex ${MEXFLAGS} $^ -output $@
+
+clean:
+    try; delete *.${OBJ_EXT} *.${MEX_EXT}; end;

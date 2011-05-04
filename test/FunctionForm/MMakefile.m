@@ -1,8 +1,8 @@
 function [rules,vars] = MMakefile
 % MMAKEFILE
 
-% OBJS := a.o b.o linked.o
-vars.OBJS = {'a.o' 'b.o' 'linked.o'};
+% OBJS := a.${OBJ_EXT} b.${OBJ_EXT} linked.${OBJ_EXT}
+vars.OBJS = {'a.${OBJ_EXT}' 'b.${OBJ_EXT}' 'linked.${OBJ_EXT}'};
 
 % pgm.${MEX_EXT}: ${OBJS}
 %     mex $^ -output $@
@@ -10,10 +10,10 @@ rules(1).target = {'pgm.${MEX_EXT}'};
 rules(1).deps = vars.OBJS;
 rules(1).commands = 'mex $^ -output $@';
 
-% a.o: a.h
-rules(2).target = {'a.o'};
+% a.${OBJ_EXT}: a.h
+rules(2).target = {'a.${OBJ_EXT}'};
 rules(2).deps = {'a.h'};
 
-% b.o: b.h
-rules(3).target = 'b.o'; % Cell encapsulation is optional with only one elt
+% b.${OBJ_EXT}: b.h
+rules(3).target = 'b.${OBJ_EXT}'; % Cell encapsulation is optional with only one elt
 rules(3).deps = 'b.h';
