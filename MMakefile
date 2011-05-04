@@ -1,7 +1,12 @@
-test: setup
+all: setup test teardown
+
+test:
 	mmake('','test/BasicDepTracking/MMakefile')
     mmake('','test/ImplicitRules/MMakefile')
     mmake('','test/FunctionForm/MMakefile.m')
 
 setup:
     addpath(fullfile(pwd,'test'))
+
+teardown:
+    rmpath(fullfile(pwd,'test'))
