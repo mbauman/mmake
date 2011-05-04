@@ -9,7 +9,7 @@ out.${MEX_EXT}: src.o src2.o
 	touch ${@}
 
 clean:
-    !rm *.o
+    try; delete('*.o'); catch; end;
 
 validate:
     assertFileIsNewer('out.${MEX_EXT}','src.o')
