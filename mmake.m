@@ -398,8 +398,8 @@ function state = read_gnu_mmakefile(state,path)
         rule = regexp(line, '^\s*(\S.*):(?!=)(.*)$', 'tokens', 'once');
         if length(rule) >= 1
             loc = length(state.rules)+1;
-            state.rules(loc).target = parseShellString(rule{1});
-            state.rules(loc).deps   = parseShellString(rule{2});
+            state.rules(loc).target = parse_shell_string(rule{1});
+            state.rules(loc).deps   = parse_shell_string(rule{2});
             
             % And check the next line for a rule
             line = fgetl(fid);
@@ -622,7 +622,6 @@ function out = is_absolute_path(path)
     end
 end
 
-
 % Merge two structs, adding values from OPT to S when S is missing the field
 function s = add_missing_fields_to_struct(s,opt)
     fields = fieldnames(opt);
@@ -650,5 +649,115 @@ function t = ftime(filename)
         t=a.lastModified();
     else
         t=[];
+    end
+end
+
+function strs = parse_shell_string(str)
+    % PARSESHELLSTRING - parse a list of space-delimited arguments as a shell 
+    % might, accounting for quoting and escapes
+    % 
+    % Note that PARSESHELLSTRING does *not* support file globbing with '*' or
+    % variable expansion or other such advanced features.
+    % 
+    % returns STRS, a cell array of arguments in the order they appear in STR
+
+    IFS = {sprintf(' ') sprintf('\t') sprintf('\n')};
+
+    if nargin ~= 1
+        error('MJB:mmake:parse_shell_string:Arguments','parse_shell_string requires one argument');
+    end
+
+    strs = {};
+
+    tok = zeros(size(str));
+    tokidx = 1;
+
+    inDoubleQuote = false;
+    inSingleQuote = false;
+
+    i = 1;
+    while i <= length(str)
+        % Use a state-based parsing algorithm.
+        switch str(i)
+            case '\'
+                if inDoubleQuote && str(i+1) ~= '"'
+                    % Print literal \ when inside a "quote" and not escaping \"
+                    tok(tokidx) = str(i);
+                    tokidx = tokidx+1;
+                elseif inSingleQuote && str(i+1) ~= ''''
+                    % Print literal \ when inside a 'quote' and not escaping \'
+                    tok(tokidx) = str(i);
+                    tokidx = tokidx+1;
+                else
+                    % Ignore the \ and print whatever comes afterwards
+                    i = i+1;
+                    if i > length(str)
+                        error('MJB:mmake:parse_shell_string:IncompleteEscape','Incomplete escape sequence at end of string');
+                    end
+                    tok(tokidx) = str(i);
+                    tokidx = tokidx+1;
+                end
+            case '"'
+                if inSingleQuote
+                    tok(tokidx) = str(i);
+                    tokidx = tokidx+1;
+                elseif inDoubleQuote
+                    inDoubleQuote = false;
+                else
+                    inDoubleQuote = true;
+                end
+            case ''''
+                if inDoubleQuote
+                    tok(tokidx) = str(i);
+                    tokidx = tokidx+1;
+                elseif inSingleQuote
+                    inSingleQuote = false;
+                else
+                    inSingleQuote = true;
+                end
+            case IFS
+                if inDoubleQuote || inSingleQuote
+                    tok(tokidx) = str(i);
+                    tokidx = tokidx+1;
+                elseif tokidx > 1
+                    % Only save a token if it actually has characters
+                    strs{end+1} = char(tok(1:tokidx-1));
+                    tok = zeros(1,length(str)-i);
+                    tokidx = 1;
+                end
+            otherwise
+                tok(tokidx) = str(i);
+                tokidx = tokidx+1;
+        end
+        i = i+1;
+    end
+
+    if inDoubleQuote || inSingleQuote
+        % We're done parsing, but still in a quote. This is an error.
+        if inDoubleQuote, quoteChar = '"'; end
+        if inSingleQuote, quoteChar = ''''; end
+        error('MJB:mmake:parse_shell_string:IncompleteQuote',['Unmatched ' quoteChar ' in input']);
+    end
+
+    % Save the final token
+    lastTok = char(tok(1:tokidx-1));
+    if ~isempty(lastTok)
+        strs{end+1} = char(lastTok);
+    end
+end
+
+function protectedStr = shell_protect(str)
+    % shell_protect - protect a string STR with single quotes '' to allow for 
+    % passing to a shell
+
+    % Escape any existing single quotes in the string
+    protectedStr = strrep(str,'''','\''');
+
+    if iscell(str)
+        for i=1:length(str)
+            protectedStr{i} = ['''' protectedStr{i} ''''];
+        end
+    else
+        protectedStr = ['''' protectedStr ''''];
     end
 end
