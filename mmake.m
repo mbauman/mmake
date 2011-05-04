@@ -173,22 +173,10 @@ function [rules, vars] = implicit_mmakefile()
         vars.LDFLAGSKEY  = 'LDFLAGS';
     end
     
-    f = mex.getCompilerConfigurations('fortran');
-    if ~isempty(f)
-        vars.FFLAGS  = f(1).Details.CompilerFlags;
-        vars.LDFLAGS = f(1).Details.LinkerFlags; % Will likely be overwritten
-    end
-    c = mex.getCompilerConfigurations('c'); % Returns both C and C++ configs
-    for i=1:length(c)
-        if ~strcmp(lower(c(i).Language),'c'), continue; end;
-        vars.CFLAGS  = c(i).Details.CompilerFlags;
-        vars.LDFLAGS = c(i).Details.LinkerFlags;
-    end
-    cxx = mex.getCompilerConfigurations('c++');
-    if ~isempty(cxx)
-        vars.CXXFLAGS = cxx(1).Details.CompilerFlags;
-        vars.LDFLAGS  = cxx(1).Details.LinkerFlags;
-    end
+    vars.CFLAGS   = ['$' vars.CFLAGSKEY];
+    vars.CXXFLAGS = ['$' vars.CXXFLAGSKEY];
+    vars.FFLAGS   = ['$' vars.FFLAGSKEY];
+    vars.LDFLAGS  = ['$' vars.LDFLAGSKEY];
     
     if isunix
         % Must escape $ signs in unix for the following vars:
@@ -205,19 +193,19 @@ function [rules, vars] = implicit_mmakefile()
     idx = 1;
     rules(idx).target   = {['%.' mexext]};
     rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex ${MEXFLAGS} ${CFLAGSKEY}=''${CFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -output $@'};
+    rules(idx).commands = {'mex ${MEXFLAGS} ${CFLAGSKEY}="${CFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -output $@'};
     idx = idx+1;
     rules(idx).target   = {['%.' mexext]};
     rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex ${MEXFLAGS} ${CXXFLAGSKEY}=''${CXXFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -output $@'};
+    rules(idx).commands = {'mex ${MEXFLAGS} ${CXXFLAGSKEY}="${CXXFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -output $@'};
     idx = idx+1;
     rules(idx).target   = {['%.' vars.OBJ_EXT]}; % Note: in a normal function-style MMakefile.m, variable expansion is performed on targets and deps
     rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CFLAGSKEY}=''${CFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -outdir $&'};
+    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CFLAGSKEY}="${CFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -outdir $&'};
     idx = idx+1;
     rules(idx).target   = {['%.' vars.OBJ_EXT]};
     rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CXXFLAGSKEY}=''${CXXFLAGS}'' ${LDFLAGSKEY}=''${LDFLAGS}'' $< -outdir $&'};
+    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CXXFLAGSKEY}="${CXXFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -outdir $&'};
     idx = idx+1;
     rules(idx).target   = {'%.dlm'};
     rules(idx).deps     = {'%.mdl'};
@@ -627,6 +615,7 @@ function out = is_absolute_path(path)
         % path begins with disk identifier X:\
         key = ['^\w',regexptranslate('escape',[':',filesep])];
         out = regexp(path,key);
+        if isempty(out), out = false; end;
     else
        % path begins with / or ~ (home directory)
        out = (path(1) == filesep | path(1) == '~');
