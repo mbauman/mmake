@@ -3,10 +3,10 @@ all: clean out.${MEX_EXT} validate
 %.o:%.c %.h common.h
 
 *.o:
-	!touch ${@}
+	touch ${@}
 
 out.${MEX_EXT}: src.o src2.o
-	!touch ${@}
+	touch ${@}
 
 clean:
     !rm *.o
