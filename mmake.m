@@ -88,10 +88,9 @@ function mmake(target,mmakefilename)
 if nargin < 1, target = ''; end;
 if nargin < 2
     % No mmakefile specified, try to find MMakefile or MMakefile.m
-    % (exist does not distinguish between the two)
-    if ~isempty(dir('MMakefile'))
+    if file_exist('MMakefile')
         mmakefilename = fullfile(pwd,'MMakefile');
-    elseif ~isempty(dir('MMakefile.m'))
+    elseif file_exist('MMakefile.m')
         mmakefilename = fullfile(pwd,'MMakefile.m');
     elseif isempty(target)
         % no target AND no makefile - not psychic!
@@ -105,7 +104,7 @@ if nargin < 3
     if ~is_absolute_path(mmakefilename) && ~isempty(mmakefilename)
         mmakefilename = fullfile(pwd,mmakefilename);
     end
-    if ~exist(mmakefilename,'file')
+    if ~file_exist(mmakefilename)
         error('MJB:mmake:nommakefile','MMakefile (%s) not found', mmakefilename)
     end
 end
@@ -278,11 +277,10 @@ function result = make(target, state)
     
     if isempty(cmds) && isempty(deps)
         % We don't know how to make it; ensure it exists:
-        file = dir(target);
-        if isempty(file)
-            result = -1;
-        else
+        if file_exist(target)
             result = 0;
+        else
+            result = -1;
         end
         return;
     end
@@ -300,20 +298,20 @@ function result = make(target, state)
             end
 
             % Ensure the dependent exists and check its timestamp
-            file = dir(deps{i});
-            if isempty(file) % TODO: || isphony(file)
+            deptime = ftime(deps{i});
+            if isempty(deptime) % TODO: || isphony(file)
                 % error('mmake: File %s not found as required by %s', deps{i}, target);
                 newest_dependent_timestamp = inf;
             else
-                newest_dependent_timestamp = max(newest_dependent_timestamp, file.datenum);
+                newest_dependent_timestamp = max(newest_dependent_timestamp, deptime);
             end
         end
     end
     
     target_timestamp = -1;
-    file = dir(target);
-    if ~isempty(file)
-        target_timestamp = file.datenum;
+    targettime = ftime(target);
+    if ~isempty(targettime)
+        target_timestamp = targettime;
     end
     
     
@@ -647,3 +645,21 @@ function s = add_missing_fields_to_struct(s,opt)
     end
 end
 
+% A proper file existence check. MATLAB tools are insufficient:
+% exist(*,'file') SEARCHES the path,
+% dir(file) returns bad information for directories.
+function b = file_exist(filename)
+    import java.io.*;
+    a=File(filename);
+    b=(a.exists() && ~a.isDirectory);
+end
+
+function t = ftime(filename)
+    import java.io.*;
+    a=File(filename);
+    if a.exists()
+        t=a.lastModified();
+    else
+        t=[];
+    end
+end
