@@ -316,7 +316,7 @@ function result = make(target, state)
 end
 
 function state = read_mmakefile(state,path)
-    if regexp(path,'\.m$')
+    if regexp(path,'\.m$','once')
         state = read_functional_mmakefile(state,path);
     else
         state = read_gnu_mmakefile(state,path);
@@ -341,14 +341,19 @@ function state = read_functional_mmakefile(state,path)
     [~,fcn] = fileparts(path);
     assert(strcmp(path,which(fcn)),'Function that is called (%s) and filename (%s) do not match',which(fcn),path);
     
-    autovars = struct;
-    if isfield(state,'vars'), autovars = state.vars; end;
+    if ~isfield(state,'vars'), state.vars = struct; end;
     try
-        [state.rules, state.vars] = feval(fcn);
+        [state.rules, vars] = feval(fcn);
     catch EX
         error(['MJB:mmake:' EX.identifier],'Error reading MMakefile (%s):%s',path,EX.message);
     end
-    state.vars = add_missing_fields_to_struct(state.vars,autovars);
+    
+    % Iterate through the defined variables, add them to state and expand them
+    fn = fieldnames(vars)';
+    for fcell = fn
+        f = char(fcell);
+        state.vars.(f) = expand_vars(vars.(f),state.vars);
+    end
     
     % Ensure the targets, deps, and commands exist and are in cells.
     for i = 1:length(state.rules)
@@ -623,17 +628,6 @@ function out = is_absolute_path(path)
     else
        % path begins with / or ~ (home directory)
        out = (path(1) == filesep | path(1) == '~');
-    end
-end
-
-% Merge two structs, adding values from OPT to S when S is missing the field
-function s = add_missing_fields_to_struct(s,opt)
-    fields = fieldnames(opt);
-    for i = 1:length(fields)
-        f = fields{i};
-        if ~isfield(s,f)
-            s.(f) = opt.(f);
-        end
     end
 end
 
