@@ -26,11 +26,11 @@ function mmake(target,mmakefilename)
 %           value of type char or a cell array of chars. In the event that a
 %           multidimensional array or cell array is returned, all elements are
 %           concatenated together with a space in between.
-%       - As a convenience, the following variables are automatically set:
+%       - As a convenience, the following variables are always pre-set:
 %           ${MEX_EXT}      -> ${eval mexext}
 %           ${OBJ_EXT}      -> 'obj' on win, 'o' on unix/mac
 %           ${PWD}          -> ${eval pwd}
-%           ${MEXFLAGS}     -> -O (optimizing; use -g for debug builds; -v for verbose)
+%           ${MEXFLAGS}     -> -O (Explicitly set MEX's default)
 %           ${CFLAGS}       -> MEX default
 %           ${CXXFLAGS}     -> MEX default
 %           ${LDFLAGS}      -> MEX default
@@ -44,12 +44,12 @@ function mmake(target,mmakefilename)
 %       - %.dlm is automatically built with rtwbuild('%')
 % 
 %   - KNOWN BUGS/DEFICIENCIES
-%       - Needs MMakefile parsing error handling
-%       - GNU-style MMakefile parsing does not generally respect quoting or 
-%           escaping only a limited subset of filename parsing respects
-%           quotes/escapes. As such, files, variables and rules cannot
-%           contain ':' or '=' characters. It does, however, support quoted
-%           and escaped filenames.
+%       - Multiple targets are not supported in a rule. (eg, ${OBJS}:common.h)
+%       - GNU-style MMakefile parsing could be greatly improved. It does not
+%           generally respect quoting or escaping. As such, files, variables 
+%           and rules cannot contain ':' or '=' characters. It does, however, 
+%           support quoted and escaped filenames. If you need something fancy,
+%           (eg, ifs, tricky strings, etc) use the function-style MMakefile.m.
 %       - Needs more tests!
 %
 %   When called without any arguments, MMAKE searches the current working
