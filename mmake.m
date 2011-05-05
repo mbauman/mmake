@@ -363,7 +363,7 @@ function state = read_functional_mmakefile(state,path)
     end
 end
 
-% Parse a GNU-style MMakefile. \
+% Parse a GNU-style MMakefile. Do this in two steps to mirror Make's behavior.
 % TODO: This should really be implemented with a state-based parser instead
 % of these regexp grabs.
 function state = read_gnu_mmakefile(state,path)
@@ -375,12 +375,13 @@ function state = read_gnu_mmakefile(state,path)
     end
     
     % Parse all the variables
+    var_regex = '^\s*([A-Za-z]\w*)\s*:=(.*)$';
     line = fgetl(fid);
     while ischar(line)
         line = strip_comments(line);
         
         % Check for an immediate := assignment
-        variable = regexp(line, '^\s*([A-Za-z]\w*)\s*:=(.*)$', 'tokens', 'once');
+        variable = regexp(line, var_regex, 'tokens', 'once');
         if length(variable) == 2
             state.vars.(variable{1}) = expand_vars(variable{2}, state.vars);
         end
@@ -398,18 +399,21 @@ function state = read_gnu_mmakefile(state,path)
         rule = regexp(line, '^\s*(\S.*):(?!=)(.*)$', 'tokens', 'once');
         if length(rule) >= 1
             loc = length(state.rules)+1;
-            state.rules(loc).target = parse_shell_string(rule{1});
-            state.rules(loc).deps   = parse_shell_string(rule{2});
+            state.rules(loc).target   = parse_shell_string(rule{1});
+            state.rules(loc).deps     = parse_shell_string(rule{2});
+            state.rules(loc).commands = {};
             
             % And check the next line for a rule
             line = fgetl(fid);
-            state.rules(loc).commands = {};
             while ischar(line) && ~isempty(regexp(line, '^(\t|\s\s\s\s)', 'once'))
-                cmdloc = length(state.rules(loc).commands)+1;
-                state.rules(loc).commands{cmdloc} = strtrim(line);
+                state.rules(loc).commands{end+1} = strtrim(strip_comments(line));
                 line = fgetl(fid);
             end
         else
+            if ~isempty(strtrim(line)) && isempty(regexp(line, var_regex, 'once'))
+                % This was a non-trivial line that wasn't parsed. Report it!
+                warning('MJB:mmake:ignoredLine','Ignored the MMakefile line ''%s''',line);
+            end
             line = fgetl(fid);
         end
     end
