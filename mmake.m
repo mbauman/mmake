@@ -321,18 +321,6 @@ function state = read_mmakefile(state,path)
     else
         state = read_gnu_mmakefile(state,path);
     end
-    
-    % Expand variables in the target and deps (postpone expanding the
-    % commands as I support embedding the auto variables within a normal
-    % variable; we won't know those until the rule is executed)
-    for i = 1:length(state.rules)
-        for field = {'target' 'deps'}
-            f = field{1};
-            if isfield(state.rules(i),f) && ~isempty(state.rules(i).(f))
-                state.rules(i).(f) = expand_vars(state.rules(i).(f), state.vars);
-            end;
-        end
-    end
 end
 
 % Parse a MATLAB-function style MMakefile.
@@ -366,6 +354,19 @@ function state = read_functional_mmakefile(state,path)
             end;
         end
     end
+    
+    % Expand variables in the target and deps (postpone expanding the
+    % commands as I support embedding the auto variables within a normal
+    % variable; we won't know those until the rule is executed)
+    for i = 1:length(state.rules)
+        for field = {'target' 'deps'}
+            f = field{1};
+            if isfield(state.rules(i),f) && ~isempty(state.rules(i).(f))
+                state.rules(i).(f) = expand_vars(state.rules(i).(f), state.vars);
+            end;
+        end
+    end
+
 end
 
 % Parse a GNU-style MMakefile. Do this in two steps to mirror Make's behavior.
@@ -404,8 +405,8 @@ function state = read_gnu_mmakefile(state,path)
         rule = regexp(line, '^\s*(\S.*):(?!=)(.*)$', 'tokens', 'once');
         if length(rule) >= 1
             loc = length(state.rules)+1;
-            state.rules(loc).target   = parse_shell_string(rule{1});
-            state.rules(loc).deps     = parse_shell_string(rule{2});
+            state.rules(loc).target   = parse_shell_string(expand_vars(rule{1},state.vars));
+            state.rules(loc).deps     = parse_shell_string(expand_vars(rule{2},state.vars));
             state.rules(loc).commands = {};
             
             % And check the next line for a rule
