@@ -10,3 +10,9 @@ setup:
 
 teardown:
     rmpath(fullfile(pwd,'test'))
+
+clean:
+	mmake('clean','test/BasicDepTracking/MMakefile')
+    mmake('clean','test/ImplicitRules/MMakefile')
+    mmake('clean','test/FunctionForm/MMakefile.m')
+
