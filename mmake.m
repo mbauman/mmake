@@ -94,7 +94,7 @@ if nargin < 2
         mmakefilename = fullfile(pwd,'MMakefile.m');
     elseif isempty(target)
         % no target AND no makefile - not psychic!
-        error('MJB:mmake:notarget','*** No targets specified and no mmakefile found.  Stop.');
+        error('MJB:mmake:no_target','*** No targets specified and no mmakefile found.  Stop.');
     else
         mmakefilename = '';
     end
@@ -105,10 +105,10 @@ if nargin < 3
         mmakefilename = fullfile(pwd,mmakefilename);
     end
     if ~file_exist(mmakefilename)
-        error('MJB:mmake:nommakefile','MMakefile (%s) not found', mmakefilename)
+        error('MJB:mmake:no_mmakefile','MMakefile (%s) not found', mmakefilename)
     end
 end
-if nargin >=3, error('MJB:mmake:Arguments','*** Too many arguments'); end;
+if nargin >=3, error('MJB:mmake:arguments','*** Too many arguments'); end;
 
 %% Make the target
 % Move to the correct directory
@@ -130,7 +130,7 @@ end
     result = make(target, state);
     switch result
         case -1
-            error('mmake: No rule found for target %s\n', target);
+            error('MJB:mmake:no_rule_found','mmake: No rule found for target %s\n', target);
         case 0
             fprintf('Nothing to be done for target %s\n', target);
         case 1
@@ -228,7 +228,7 @@ function result = make(target, state)
     for i=1:length(target_rules)
         if ~isempty(target_rules(i).commands)
             if ~isempty(cmds)
-                warning('mmake:multiple_commands',['mmake: Overriding commands for target ',target]);
+                warning('MJB:mmake:multiple_commands',['mmake: Overriding commands for target ',target]);
             end
             cmds = target_rules(i).commands;
         end
@@ -282,7 +282,7 @@ function result = make(target, state)
             % Recursively make all the dependents
             status = make(deps{i}, state);
             if status == -1
-                error('mmake: No rule to build %s as required by %s', deps{i}, target);
+                error('MJB:mmake:no_rule_found','mmake: No rule to build %s as required by %s', deps{i}, target);
             end
 
             % Ensure the dependent exists and check its timestamp
@@ -417,7 +417,7 @@ function state = read_gnu_mmakefile(state,path)
         else
             if ~isempty(strtrim(line)) && isempty(regexp(line, var_regex, 'once'))
                 % This was a non-trivial line that wasn't parsed. Report it!
-                warning('MJB:mmake:ignoredLine','Ignored the MMakefile line ''%s''',line);
+                warning('MJB:mmake:ignored_line','Ignored the MMakefile line ''%s''',line);
             end
             line = fgetl(fid);
         end
@@ -516,9 +516,9 @@ function [result, len] = parse_var(src,vars)
         i = i+1;
     end
     if src(2) == '{' && b >= 0
-        error(['mmake: unmatched ''{'' in MMakefile variable ', src]);
+        error('MJB:mmake:unmatched_paren',['mmake: unmatched ''{'' in MMakefile variable ', src]);
     elseif src(2) == '(' && p >= 0
-        error(['mmake: unmatched ''('' in MMakefile variable ', src]);
+        error('MJB:mmake:unmatched_paren',['mmake: unmatched ''('' in MMakefile variable ', src]);
     end
     result{end+1} = src(j:i-1);
     result = [result{:}];
@@ -662,7 +662,7 @@ function strs = parse_shell_string(str)
     IFS = {sprintf(' ') sprintf('\t') sprintf('\n')};
 
     if nargin ~= 1
-        error('MJB:mmake:parse_shell_string:Arguments','parse_shell_string requires one argument');
+        error('MJB:mmake:parse_shell_string:arguments','parse_shell_string requires one argument');
     end
 
     strs = {};
@@ -690,7 +690,8 @@ function strs = parse_shell_string(str)
                     % Ignore the \ and print whatever comes afterwards
                     i = i+1;
                     if i > length(str)
-                        error('MJB:mmake:parse_shell_string:IncompleteEscape','Incomplete escape sequence at end of string');
+                        error('MJB:mmake:parse_shell_string:incomplete_escape',...
+                            'Incomplete escape sequence at end of string');
                     end
                     tok(tokidx) = str(i);
                     tokidx = tokidx+1;
@@ -734,7 +735,7 @@ function strs = parse_shell_string(str)
         % We're done parsing, but still in a quote. This is an error.
         if inDoubleQuote, quoteChar = '"'; end
         if inSingleQuote, quoteChar = ''''; end
-        error('MJB:mmake:parse_shell_string:IncompleteQuote',['Unmatched ' quoteChar ' in input']);
+        error('MJB:mmake:parse_shell_string:incomplete_quote',['Unmatched ' quoteChar ' in input']);
     end
 
     % Save the final token
