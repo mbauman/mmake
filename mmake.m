@@ -88,9 +88,9 @@ function mmake(target,mmakefilename)
 if nargin < 1, target = ''; end;
 if nargin < 2
     % No mmakefile specified, try to find MMakefile or MMakefile.m
-    if file_exist('MMakefile')
+    if file_exist(fullfile(pwd,'MMakefile'))
         mmakefilename = fullfile(pwd,'MMakefile');
-    elseif file_exist('MMakefile.m')
+    elseif file_exist(fullfile(pwd,'MMakefile.m'))
         mmakefilename = fullfile(pwd,'MMakefile.m');
     elseif isempty(target)
         % no target AND no makefile - not psychic!
@@ -151,10 +151,19 @@ end %function
 
 function [rules, vars] = implicit_mmakefile()
     vars.MEX_EXT = mexext;
-    if ispc
-        vars.OBJ_EXT = 'obj';
-    else
+    
+    % deterine the appropriate file extension for object files
+    vars.OPTIMFLAGS = '-O2';
+    if isunix || isoctave
         vars.OBJ_EXT = 'o';
+    else
+        cc = mex.getCompilerConfigurations ('C');
+        if strncmpi (cc.ShortName, 'MSVC', 4)
+            vars.OBJ_EXT = 'obj';
+            vars.OPTIMFLAGS = '/Ox';
+        else
+            vars.OBJ_EXT = 'o';
+        end
     end
     vars.PWD = pwd;
     
@@ -172,6 +181,7 @@ function [rules, vars] = implicit_mmakefile()
         vars.FFLAGSKEY   = 'FFLAGS';
         vars.LDFLAGSKEY  = 'LDFLAGS';
     end
+    vars.OPTIMFLAGSKEY  = 'OPTIMFLAGS';
     
     vars.CFLAGS   = ['$' vars.CFLAGSKEY];
     vars.CXXFLAGS = ['$' vars.CXXFLAGSKEY];
@@ -180,7 +190,7 @@ function [rules, vars] = implicit_mmakefile()
     
     if isunix
         % Must escape $ signs in unix for the following vars:
-        fields = {'CFLAGS' 'CXXFLAGS' 'FFLAGS' 'LDFLAGS'};
+        fields = {'CFLAGS' 'CXXFLAGS' 'FFLAGS' 'LDFLAGS', 'OPTIMFLAGS'};
         for i = 1:length(fields)
             if ~isfield(vars,fields{i}), continue; end;
             vars.(fields{i}) = strrep(vars.(fields{i}),'$','\$');
@@ -193,19 +203,19 @@ function [rules, vars] = implicit_mmakefile()
     idx = 1;
     rules(idx).target   = {['%.' mexext]};
     rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex ${MEXFLAGS} ${CFLAGSKEY}="${CFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -output $@'};
+    rules(idx).commands = {'mex ${MEXFLAGS} ${OPTIMFLAGSKEY}="${OPTIMFLAGS}" ${CFLAGSKEY}="${CFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -output $@'};
     idx = idx+1;
     rules(idx).target   = {['%.' mexext]};
     rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex ${MEXFLAGS} ${CXXFLAGSKEY}="${CXXFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -output $@'};
+    rules(idx).commands = {'mex ${MEXFLAGS} ${OPTIMFLAGSKEY}="${OPTIMFLAGS}" ${CXXFLAGSKEY}="${CXXFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -output $@'};
     idx = idx+1;
     rules(idx).target   = {['%.' vars.OBJ_EXT]}; % Note: in a normal function-style MMakefile.m, variable expansion is performed on targets and deps
     rules(idx).deps     = {'%.c'};
-    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CFLAGSKEY}="${CFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -outdir $&'};
+    rules(idx).commands = {'mex -c ${MEXFLAGS} ${OPTIMFLAGSKEY}="${OPTIMFLAGS}" ${CFLAGSKEY}="${CFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -outdir $&'};
     idx = idx+1;
     rules(idx).target   = {['%.' vars.OBJ_EXT]};
     rules(idx).deps     = {'%.cpp'};
-    rules(idx).commands = {'mex -c ${MEXFLAGS} ${CXXFLAGSKEY}="${CXXFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -outdir $&'};
+    rules(idx).commands = {'mex -c ${MEXFLAGS} ${OPTIMFLAGSKEY}="${OPTIMFLAGS}" ${CXXFLAGSKEY}="${CXXFLAGS}" ${LDFLAGSKEY}="${LDFLAGS}" $< -outdir $&'};
     idx = idx+1;
     rules(idx).target   = {'%.dlm'};
     rules(idx).deps     = {'%.mdl'};
@@ -760,4 +770,29 @@ function protectedStr = shell_protect(str)
     else
         protectedStr = ['''' protectedStr ''''];
     end
+end
+
+function t = isoctave()
+% ISOCTAVE.M
+% ISOCTAVE  True if the operating environment is octave.
+%    Usage: t=isoctave();
+% 
+%    Returns 1 if the operating environment is octave, otherwise
+%    0 (Matlab)
+% 
+% ---------------------------------------------------------------
+%
+% COPYRIGHT : (c) NUHAG, Dept.Math., University of Vienna, AUSTRIA
+%             http://nuhag.eu/
+%             Permission is granted to modify and re-distribute this
+%             code in any manner as long as this notice is preserved.
+%             All standard disclaimers apply.
+
+    if exist('OCTAVE_VERSION')
+        % Only Octave has this variable.
+        t=1;
+    else
+        t=0;
+    end
+
 end
