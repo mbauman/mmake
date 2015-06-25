@@ -698,28 +698,26 @@ end
 % exist(*,'file') SEARCHES the path,
 % dir(file) returns bad information for directories.
 function b = file_exist(filename)
-%     import java.io.*;
     if isempty (javachk ('jvm'))
         a = javaObject ('java.io.File', filename);
-%         a=File(filename);
         b=(a.exists() && ~a.isDirectory);
     else
-        
+        error ('MJB:mmake:file_exist:java', ...
+               'mmake requires java support.');
     end
 end
 
 function t = ftime(filename)
-%     import java.io.*;
     if isempty (javachk ('jvm'))
         a = javaObject ('java.io.File', filename);
-%         a=File(filename);
         if a.exists()
             t=a.lastModified();
         else
             t=[];
         end
     else
-        
+        error ('MJB:mmake:file_exist:java', ...
+               'mmake requires java support.');
     end
 end
 
