@@ -153,21 +153,20 @@ function [rules, vars] = implicit_mmakefile()
     vars.MEX_EXT = mexext;
     
     % deterine the appropriate file extension for object files
-    vars.OPTIMFLAGS = '-O2';
+    vars.OPTIMFLAGS = '';
     if isunix || isoctave
         vars.OBJ_EXT = 'o';
     else
         cc = mex.getCompilerConfigurations ('C');
         if strncmpi (cc.ShortName, 'MSVC', 4)
             vars.OBJ_EXT = 'obj';
-            vars.OPTIMFLAGS = '/Ox';
         else
             vars.OBJ_EXT = 'o';
         end
     end
     vars.PWD = pwd;
     
-    vars.MEXFLAGS = ''; % Mirror MATLAB's default, but be explicit about it
+    vars.MEXFLAGS = '-O'; % Mirror MATLAB's default, but be explicit about it
     
     if isoctave
         vars.CFLAGSKEY   = '-W';
